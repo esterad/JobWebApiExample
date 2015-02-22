@@ -31,6 +31,8 @@ namespace OwinSelfhostSample
                 };
                 using (var client = new HttpClient())
                 {
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
                     var response = client.PostAsJsonAsync(baseAddress + "api/values", job).Result;
                     if (response.IsSuccessStatusCode)
@@ -53,8 +55,70 @@ namespace OwinSelfhostSample
                         JobDTO job2 = response.Content.ReadAsAsync<JobDTO>().Result;
                     }
                 }
+
+
+                using (var client = new HttpClient())
+                {
+                    // New code:
+                    client.BaseAddress = new Uri(@"http://localhost:56060");
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                    JobCompletedDTO jobCompleted = new JobCompletedDTO() { Id = Guid.NewGuid(), secret = "test" };
+                    HttpResponseMessage response = null;
+                    try
+                    {
+                        response = client.PutAsJsonAsync("api/JobComplete", jobCompleted).Result;
+                    }
+                    catch (Exception ex)
+                    {
+                        
+                        if (ex is AggregateException)
+                        {
+                            var listOfExeptions = (ex as AggregateException).InnerExceptions;
+                            
+                            foreach (var item in listOfExeptions)
+                            {
+                                Exception current = item;
+                                Console.WriteLine(current.Message);
+                                do
+                                {
+                                    
+                                    if (current.InnerException!=null)
+                                    {
+                                        current = current.InnerException;
+                                        Console.WriteLine(current.Message);
+                                    }
+                                } while (current.InnerException != null);
+                            }
+
+                        }
+                        else
+                        {
+                            Console.WriteLine(ex.GetBaseException().Message);
+                        }
+
+                    }
+                    if (response != null && response.IsSuccessStatusCode)
+                    {
+                        Boolean resp = response.Content.ReadAsAsync<Boolean>().Result;
+                    }
+                }
                 Console.ReadLine();
             }
+
+        }
+        public class JobCompletedDTO
+        {
+            public Guid Id { get; set; }
+            public string secret { get; set; }
+
+        }
+
+        public class JobErrorDTO
+        {
+            public Guid Id { get; set; }
+            public string message { get; set; }
+            public string secret { get; set; }
 
         }
     }
